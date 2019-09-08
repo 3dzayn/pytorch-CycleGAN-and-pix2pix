@@ -23,9 +23,12 @@ from options.train_options import TrainOptions
 from data import create_dataset
 from models import create_model
 from util.visualizer import Visualizer
+import wandb
 
 if __name__ == '__main__':
     opt = TrainOptions().parse()   # get training options
+    wandb.init(project = "CycleGAN-and-pix2pix")
+    wandb.config.update(opt)       # log config parameters
     dataset = create_dataset(opt)  # create a dataset given opt.dataset_mode and other options
     dataset_size = len(dataset)    # get the number of images in the dataset.
     print('The number of training images = %d' % dataset_size)
@@ -74,4 +77,12 @@ if __name__ == '__main__':
             model.save_networks(epoch)
 
         print('End of epoch %d / %d \t Time Taken: %d sec' % (epoch, opt.niter + opt.niter_decay, time.time() - epoch_start_time))
+        # Log visualizations and losses
+        model.compute_visuals()
+        visuals = model.get_current_visuals()
+        pred_log = [wandb.Image(y, caption=x) for x, y in visuals.items()]
+        wandb.log({"Prediction Samples": pred_log}, commit=False)
+        losses = model.get_current_losses()
+        wandb.log(losses)
+
         model.update_learning_rate()                     # update learning rates at the end of every epoch.
